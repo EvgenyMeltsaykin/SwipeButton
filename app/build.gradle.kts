@@ -1,16 +1,8 @@
 plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.jetbrainsKotlinAndroid)
-    id("com.vk.recompose-highlighter") version "0.4.2"
-    id("com.vk.recompose-logger") version "0.4.2"
-}
-
-recomposeHighlighter {
-    isEnabled = true
-}
-
-recomposeLogger {
-    isEnabled = true
+    alias(libs.plugins.recompose.highlighter)
+    alias(libs.plugins.recompose.logger)
 }
 
 android {
@@ -24,7 +16,6 @@ android {
         versionCode = 1
         versionName = "1.0"
 
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true
         }
@@ -32,7 +23,7 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }

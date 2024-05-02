@@ -1,4 +1,4 @@
-package ru.kontur.swipe.button.layoutSwipeButton
+package ru.kontur.swipe.button.optimalSwipeButton
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -8,7 +8,6 @@ import androidx.compose.foundation.gestures.anchoredDraggable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.FloatState
 import androidx.compose.runtime.Immutable
@@ -24,6 +23,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
@@ -38,29 +38,8 @@ import androidx.compose.ui.layout.layoutId
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.theapache64.rebugger.Rebugger
 import kotlin.math.roundToInt
 
-/**
- * SwipeableButton
- *
- * Button with the ability to move the thumb.
- *
- * @param state The state object that will be used to control or monitor the button's state.
- * @param initialAnchor The thumb initial position.
- * @param progressColor The color that will fill the area behind the thumb.
- * @param thumbBackgroundColor The thumb background color.
- * @param backgroundColor The button background color.
- * @param thumbContent The thumb composable content.
- * @param centerContent The content in the center of the button.
- * @param endContent The content in the end of the button.
- * @param modifier The modifier to apply to this button.
- * @param shape Button and thumb shape.
- * @param size Defines the button's size.
- * @param enabled Drag and drop accessibility.
- * @param onTargetAnchorChange The target anchor change listener. Called when it reaches the desired positionalThreshold specified in [state]
- * @param onSwiped The current anchor change listener. Called when the current anchor changes
- */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun SwipeableButton(
@@ -73,145 +52,151 @@ internal fun SwipeableButton(
     shape: Shape = CircleShape,
     size: SwipeableButtonSize = SwipeableButtonSize.Large,
     enabled: Boolean = true,
-    onSwiped: (target: State<SwipeButtonAnchor>) -> Unit = {},
+    onSwiped: (target: SwipeButtonAnchor) -> Unit = {},
 ) {
     val progressState = remember { mutableFloatStateOf(0f) }
     var lastAnchor by remember { mutableStateOf(state.initialValue) }
-    val anchoredDraggableState = remember { state.anchoredDraggableState }
-    val currentAnchorState = remember { derivedStateOf { anchoredDraggableState.currentValue } }
-    val targetAnchorState = remember { derivedStateOf { anchoredDraggableState.targetValue } }
-    val draggableOffsetState = remember { derivedStateOf { anchoredDraggableState.requireOffset() } }
-    val maxAnchorState = remember { derivedStateOf { anchoredDraggableState.anchors.maxAnchor() } }
+    val currentAnchorState = remember { derivedStateOf { state.anchoredDraggableState.currentValue } }
+    val targetAnchorState = remember { derivedStateOf { state.anchoredDraggableState.targetValue } }
     val endOfTrackState = remember { mutableIntStateOf(0) }
-    LaunchedEffect(currentAnchorState.value) {
-        if (currentAnchorState.value != lastAnchor) {
-            onSwiped(currentAnchorState)
+    LaunchedEffect(state.currentValue) {
+        if (state.currentValue != lastAnchor) {
+            onSwiped(state.currentValue)
         }
-        lastAnchor = currentAnchorState.value
+        lastAnchor = state.currentValue
     }
 
     LaunchedEffect(endOfTrackState.intValue) {
         if (endOfTrackState.intValue != 0) {
-            anchoredDraggableState.updateAnchors(
+            state.anchoredDraggableState.updateAnchors(
                 newAnchors = DraggableAnchors {
                     SwipeButtonAnchor.Start at 0f
                     SwipeButtonAnchor.End at endOfTrackState.intValue.toFloat()
                 },
-                newTarget = currentAnchorState.value
+                newTarget = state.currentValue
             )
         }
     }
-    Surface(
-        modifier = modifier,
-        shape = shape,
-        color = colors.backgroundColor(),
-    ) {
-        Layout(
-            {
-                Box(modifier = Modifier.layoutId(SwipeableButtonLayout.ThumbLayout)) {
-                    thumbContent(progressState, targetAnchorState)
-                }
-                Box(
-                    modifier = Modifier
-                        .layoutId(SwipeableButtonLayout.ProcessLayout)
-                        .drawWithCache {
-                            onDrawBehind {
-                                drawRect(
-                                    color = colors.progressColor(),
-                                    size = Size(width = this.size.width, height = this.size.height),
-                                )
-                            }
+    Layout(
+        {
+            // Помещаем элемент-якорь
+            Box(
+                modifier = Modifier
+                    .layoutId(SwipeableButtonLayout.ThumbLayout)
+                    .clip(shape)
+                    .background(colors.thumbBackgroundColor(), shape)
+                    .anchoredDraggable(
+                        state = state.anchoredDraggableState,
+                        orientation = Orientation.Horizontal,
+                        enabled = enabled,
+                        startDragImmediately = false
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                thumbContent(progressState, targetAnchorState)
+            }
+            // Помещаем элемент отвечающий за прогресс свайпа
+            Box(
+                modifier = Modifier
+                    .layoutId(SwipeableButtonLayout.ProcessLayout)
+                    .drawWithCache {
+                        onDrawBehind {
+                            drawRect(
+                                color = colors.progressColor(),
+                                size = Size(width = this.size.width, height = this.size.height),
+                            )
                         }
-                )
-                Box(modifier = Modifier.layoutId(SwipeableButtonLayout.EndLayout)) {
-                    endContent(progressState)
-                }
-                Box(modifier = Modifier.layoutId(SwipeableButtonLayout.CenterLayout)) {
-                    centerContent(progressState, currentAnchorState)
-                }
-                Box(
-                    modifier = Modifier
-                        .layoutId(SwipeableButtonLayout.BackgroundThumbLayout)
-                        .clip(shape)
-                        .background(colors.thumbBackgroundColor(), shape)
-                        .anchoredDraggable(
-                            state = anchoredDraggableState,
-                            orientation = Orientation.Horizontal,
-                            enabled = enabled && !state.anchoredDraggableState.isAnimationRunning,
-                            startDragImmediately = false
-                        )
-                )
-            },
-            modifier = Modifier,
-            measurePolicy = swipeableMeasure(
-                size = size,
-                progress = progressState,
-                draggableOffset = draggableOffsetState,
-                maxAnchor = maxAnchorState,
-                endOfTrackState = endOfTrackState
+                    }
             )
+            // Помещаем правый элемент
+            Box(
+                modifier = Modifier.layoutId(SwipeableButtonLayout.EndLayout)
+            ) {
+                endContent(progressState)
+            }
+            // Помещаем центральный элемент
+            Box(
+                modifier = Modifier.layoutId(SwipeableButtonLayout.CenterLayout)
+            ) {
+                centerContent(progressState, currentAnchorState)
+            }
+        },
+        modifier = modifier
+            .clip(shape)
+            .background(colors.backgroundColor(), shape),
+        measurePolicy = swipeableMeasure(
+            size = size,
+            progressState = progressState,
+            draggableOffsetProvider = { state.anchoredDraggableState.requireOffset().roundToInt() },
+            maxAnchorProvider = { state.anchoredDraggableState.anchors.maxAnchor().roundToInt() },
+            endOfTrackState = endOfTrackState
         )
-    }
+    )
 }
 
 @Composable
 private fun swipeableMeasure(
     size: SwipeableButtonSize,
-    draggableOffset: State<Float>,
-    maxAnchor: State<Float>,
+    draggableOffsetProvider: () -> Int,
+    maxAnchorProvider: () -> Int,
     endOfTrackState: MutableIntState,
-    progress: MutableFloatState,
+    progressState: MutableFloatState,
 ): MeasureScope.(measurables: List<Measurable>, constraints: Constraints) -> MeasureResult {
     return { measurables, constraints ->
-        val thumbPlaceable = measurables.first { it.layoutId == SwipeableButtonLayout.ThumbLayout }.measure(constraints)
-        val thumbHeight = thumbPlaceable.height
-        val thumbWidth = thumbPlaceable.width
-        val height = thumbHeight.coerceAtLeast(size.minHeight.roundToPx())
-        val endOfTrack = constraints.maxWidth - thumbWidth
-        val backgroundThumbPlaceable = measurables.first { it.layoutId == SwipeableButtonLayout.BackgroundThumbLayout }.measure(
-            constraints.copy(minWidth = thumbWidth.coerceAtLeast(size.minWidth.roundToPx()), minHeight = height)
+        // Измеряем слайд-якорь
+        val thumbPlaceable = measurables.first { it.layoutId == SwipeableButtonLayout.ThumbLayout }.measure(
+            constraints.copy(
+                minHeight = constraints.minHeight.coerceAtLeast(size.minHeight.roundToPx()),
+                minWidth = constraints.minWidth.coerceAtLeast(size.minWidth.roundToPx())
+            )
         )
+        // Высота кнопки
+        val height = thumbPlaceable.height
+        // Ширина якоря
+        val thumbWidth = thumbPlaceable.width
+        // Рассчитываем длину свайпа
+        val endOfTrackWidth = constraints.maxWidth - thumbWidth
 
-        if (maxAnchor.value.roundToInt() != endOfTrack && endOfTrack != 0) {
-            endOfTrackState.intValue = endOfTrack
+        if (maxAnchorProvider() != endOfTrackWidth && endOfTrackWidth != 0) {
+            endOfTrackState.intValue = endOfTrackWidth
         }
 
-        val maxProgressWidth = constraints.maxWidth - backgroundThumbPlaceable.width
+        // Рассчитываем отступ по икс для якоря
+        val thumbX = draggableOffsetProvider().coerceAtLeast(0).coerceAtMost(endOfTrackWidth)
 
-        val backgroundThumbX = draggableOffset.value.roundToInt().coerceAtLeast(0).coerceAtMost(maxProgressWidth)
-
+        // Измеряем элемент прогресса
         val progressPlaceable = measurables.first { it.layoutId == SwipeableButtonLayout.ProcessLayout }.measure(
             constraints.copy(
-                minWidth = backgroundThumbX + backgroundThumbPlaceable.width / 2,
+                minWidth = thumbX + thumbWidth / 2,
                 minHeight = height
             )
         )
 
-        val endContentPlaceable = measurables.first {
-            it.layoutId == SwipeableButtonLayout.EndLayout
-        }.measure(constraints)
-        val centerContentPlaceable = measurables.first {
-            it.layoutId == SwipeableButtonLayout.CenterLayout
-        }.measure(constraints)
-        progress.floatValue = backgroundThumbX.toFloat() / maxProgressWidth
+        // Измеряем правый элемент
+        val endContentPlaceable = measurables.first { it.layoutId == SwipeableButtonLayout.EndLayout }.measure(constraints)
+        // Измеряем центральный элемент
+        val centerContentPlaceable = measurables.first { it.layoutId == SwipeableButtonLayout.CenterLayout }.measure(constraints)
+        progressState.floatValue = thumbX.toFloat() / endOfTrackWidth
         layout(constraints.maxWidth, height) {
+            // Размещаем элемент прогресса
             progressPlaceable.placeRelative(x = 0, y = 0)
+            // Размещаем центральный элемент
             centerContentPlaceable.placeRelative(
                 x = constraints.maxWidth / 2 - centerContentPlaceable.width / 2,
                 y = height / 2 - centerContentPlaceable.height / 2
             )
-            backgroundThumbPlaceable.placeRelative(x = backgroundThumbX, y = 0)
+            // Размещаем элемент-якорь
             thumbPlaceable.placeRelative(
-                x = backgroundThumbX + backgroundThumbPlaceable.width / 2 - thumbWidth / 2,
+                x = thumbX,
                 y = height / 2 - thumbPlaceable.height / 2
             )
+            // Размещаем правый элемент
             endContentPlaceable.placeRelative(
                 x = constraints.maxWidth - endContentPlaceable.width,
                 y = height / 2 - endContentPlaceable.height / 2
             )
         }
     }
-
 }
 
 enum class SwipeButtonAnchor { Start, End }
@@ -226,7 +211,7 @@ enum class SwipeableButtonSize(
 }
 
 private enum class SwipeableButtonLayout {
-    BackgroundThumbLayout, ThumbLayout, ProcessLayout, EndLayout, CenterLayout
+    ThumbLayout, ProcessLayout, EndLayout, CenterLayout
 }
 
 @Stable

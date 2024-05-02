@@ -9,6 +9,7 @@ lifecycleRuntimeKtx = "2.7.0"
 activityCompose = "1.8.2"
 composeBom = "2024.04.00"
 rebugger = "1.0.0-rc03"
+recompose = "0.4.2"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -31,3 +32,5 @@ rebugger = { module = "io.github.theapache64:rebugger", version.ref = "rebugger"
 androidApplication = { id = "com.android.application", version.ref = "agp" }
 jetbrainsKotlinAndroid = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 
+recompose-highlighter = { id = "com.vk.recompose-highlighter", version.ref = "recompose" }
+recompose-logger = { id = "com.vk.recompose-logger", version.ref = "recompose" }

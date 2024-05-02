@@ -1,8 +1,9 @@
-package ru.kontur.swipe.button.swipeButton
+package ru.kontur.swipe.button.notOptimalSwipeButton
 
 
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.MutatePriority
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.AnchoredDraggableState
 import androidx.compose.foundation.gestures.DraggableAnchors
@@ -33,14 +34,12 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
-
-enum class Anchor { Start, End }
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun SwipeButton(
-    modifier: Modifier,
+fun NotOptimalSwipeButton(
     progressColor: Color,
     thumbBackgroundColor: Color,
     backgroundColor: Color,
@@ -86,9 +85,19 @@ fun SwipeButton(
             }
         )
     }
-    Surface(
-        modifier = modifier
-    ) {
+
+    LaunchedEffect(state.currentValue) {
+        if (state.currentValue == Anchor.End) {
+            delay(2000)
+            state.anchoredDrag(
+                dragPriority = MutatePriority.PreventUserInput
+            ) { anchors ->
+                dragTo(newOffset = anchors.positionOf(Anchor.Start))
+            }
+        }
+    }
+
+    Surface {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -143,3 +152,5 @@ fun SwipeButton(
         }
     }
 }
+
+enum class Anchor { Start, End }

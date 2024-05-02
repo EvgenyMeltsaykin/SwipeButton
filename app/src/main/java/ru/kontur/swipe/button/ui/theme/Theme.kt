@@ -24,7 +24,6 @@ private val LightColorScheme = lightColors(
 @Composable
 fun SwipebuttonTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
     content: @Composable () -> Unit,
 ) {
     val colors = when {
